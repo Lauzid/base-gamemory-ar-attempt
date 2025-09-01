@@ -6,43 +6,38 @@ AFRAME.registerComponent('memory-game', {
         this.pairsFound = 0;
         this.totalPairs = 8;
         this.canFlip = true;
-        
-        // Cores para usar como valores das cartas em vez de emojis
-        this.cardColors = [
-            '#FF5733', '#FF5733', '#33FF57', '#33FF57', '#3357FF', '#3357FF', '#FF33F5', '#FF33F5',
-            '#F5FF33', '#F5FF33', '#33FFF5', '#33FFF5', '#FF8C33', '#FF8C33', '#8C33FF', '#8C33FF'
+
+        // Caminhos das imagens (duas de cada para formar pares)
+        this.cardImages = [
+            'assets/images/img1.png', 'assets/images/img1.png',
+            'assets/images/img2.png', 'assets/images/img2.png',
+            'assets/images/img3.png', 'assets/images/img3.png',
+            'assets/images/img4.png', 'assets/images/img4.png',
+            'assets/images/img5.png', 'assets/images/img5.png',
+            'assets/images/img6.png', 'assets/images/img6.png',
+            'assets/images/img7.png', 'assets/images/img7.png',
+            'assets/images/img8.png', 'assets/images/img8.png'
         ];
 
-        // Formas para usar como valores das cartas
-        this.cardShapes = [
-            'circle', 'circle', 'triangle', 'triangle', 'square', 'square', 'ring', 'ring',
-            'torus', 'torus', 'cone', 'cone', 'octahedron', 'octahedron', 'tetrahedron', 'tetrahedron'
-        ];
-        
-        // Emparelhar cores e formas
+        // Emparelhar imagens
         this.cardPairs = [];
-        for (let i = 0; i < this.cardColors.length; i++) {
+        for (let i = 0; i < this.cardImages.length; i++) {
             this.cardPairs.push({
-                color: this.cardColors[i],
-                shape: this.cardShapes[i]
+                image: this.cardImages[i]
             });
         }
-        
+
         // Shuffle the card values
         this.shuffle(this.cardPairs);
-        
-        // Add event listener to scene to ensure raycaster is working
+
         this.el.sceneEl.addEventListener('loaded', () => {
-            console.log('Scene loaded, setting up game interactions');
-            // Create the game board after the scene is fully loaded
             this.createBoard();
         });
-        
-        // Add click listener for restart button
+
         const restartButton = document.getElementById('restart-button');
         restartButton.addEventListener('click', () => this.resetGame());
     },
-    
+
     shuffle: function(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -53,56 +48,45 @@ AFRAME.registerComponent('memory-game', {
     
     createBoard: function() {
         const gameBoard = document.getElementById('game-board');
-        
-        // Clear any existing cards
         while (gameBoard.firstChild) {
             gameBoard.removeChild(gameBoard.firstChild);
         }
-        
-        // Card dimensions and spacing
+
         const cardWidth = 0.4;
         const cardHeight = 0.4;
         const gap = 0.1;
         const cols = 4;
         const rows = 4;
-        
-        // Calculate board dimensions
+
         const boardWidth = cols * cardWidth + (cols - 1) * gap;
         const boardHeight = rows * cardHeight + (rows - 1) * gap;
-        
-        // Calculate starting position (top-left of board)
+
         const startX = -boardWidth / 2 + cardWidth / 2;
         const startY = boardHeight / 2 - cardHeight / 2;
-        
-        // Create cards
+
         let cardIndex = 0;
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 const x = startX + col * (cardWidth + gap);
                 const y = startY - row * (cardHeight + gap);
-                
+
                 const cardPair = this.cardPairs[cardIndex];
-                
-                // Create card entity
+
                 const card = document.createElement('a-entity');
                 card.setAttribute('position', `${x} ${y} 0`);
                 card.setAttribute('data-index', cardIndex);
-                card.setAttribute('data-color', cardPair.color);
-                card.setAttribute('data-shape', cardPair.shape);
+                card.setAttribute('data-image', cardPair.image);
                 card.setAttribute('class', 'card');
-                
-                // Create card front (face-down) - Esta é a parte clicável
+
+                // Frente da carta (virada para baixo)
                 const cardFront = document.createElement('a-plane');
                 cardFront.setAttribute('width', cardWidth);
                 cardFront.setAttribute('height', cardHeight);
                 cardFront.setAttribute('color', '#1E90FF');
                 cardFront.setAttribute('position', '0 0 0.01');
                 cardFront.setAttribute('class', 'card-front clickable');
-                
-                // Adicionando componente de hover em vez de animation
                 cardFront.setAttribute('card-hover', '');
-                
-                // Adiciona um símbolo de ? na frente
+
                 const questionMark = document.createElement('a-text');
                 questionMark.setAttribute('value', '?');
                 questionMark.setAttribute('color', 'white');
@@ -111,67 +95,24 @@ AFRAME.registerComponent('memory-game', {
                 questionMark.setAttribute('width', 2);
                 questionMark.setAttribute('scale', '0.5 0.5 0.5');
                 cardFront.appendChild(questionMark);
-                
-                // Adicionar evento de clique diretamente ao cardFront
+
                 cardFront.addEventListener('click', () => {
-                    console.log("Carta clicada:", cardIndex);
                     this.flipCard(card);
                 });
-                
-                // Create card back (face-up) - Usando geometrias 3D em vez de texto
+
+                // Verso da carta (imagem)
                 const cardBack = document.createElement('a-entity');
-                cardBack.setAttribute('position', '0 0 0.1');  // Posicionado ligeiramente à frente
-                
-                // Criando a forma 3D
-                const shape = document.createElement('a-entity');
-                let geometry, scale;
-                
-                switch(cardPair.shape) {
-                    case 'circle':
-                        geometry = 'primitive: circle; radius: 0.15';
-                        scale = '1 1 1';
-                        break;
-                    case 'triangle':
-                        geometry = 'primitive: triangle; vertexA: 0 0.15 0; vertexB: -0.15 -0.15 0; vertexC: 0.15 -0.15 0';
-                        scale = '1 1 1';
-                        break;
-                    case 'square':
-                        geometry = 'primitive: plane; width: 0.25; height: 0.25';
-                        scale = '1 1 1';
-                        break;
-                    case 'ring':
-                        geometry = 'primitive: ring; radiusInner: 0.1; radiusOuter: 0.15';
-                        scale = '1 1 1';
-                        break;
-                    case 'torus':
-                        geometry = 'primitive: torus; radius: 0.1; radiusTubular: 0.01';
-                        scale = '1 1 1';
-                        break;
-                    case 'cone':
-                        geometry = 'primitive: cone; radiusBottom: 0.15; radiusTop: 0; height: 0.25';
-                        scale = '1 1 1';
-                        break;
-                    case 'octahedron':
-                        geometry = 'primitive: octahedron; radius: 0.15';
-                        scale = '1 1 1';
-                        break;
-                    case 'tetrahedron':
-                        geometry = 'primitive: tetrahedron; radius: 0.15';
-                        scale = '1 1 1';
-                        break;
-                    default:
-                        geometry = 'primitive: box; width: 0.25; height: 0.25; depth: 0.05';
-                        scale = '1 1 1';
-                }
-                
-                shape.setAttribute('geometry', geometry);
-                shape.setAttribute('material', `color: ${cardPair.color}; shader: flat`);
-                shape.setAttribute('scale', scale);
-                shape.setAttribute('visible', 'false');
-                shape.setAttribute('class', 'shape');
-                cardBack.appendChild(shape);
-                
-                // Create card background (for the back/revealed side)
+                cardBack.setAttribute('position', '0 0 0.1');
+
+                const cardImage = document.createElement('a-image');
+                cardImage.setAttribute('src', cardPair.image);
+                cardImage.setAttribute('width', cardWidth * 0.9);
+                cardImage.setAttribute('height', cardHeight * 0.9);
+                cardImage.setAttribute('visible', 'false');
+                cardImage.setAttribute('class', 'card-image');
+                cardBack.appendChild(cardImage);
+
+                // Fundo branco para o verso
                 const cardBackBg = document.createElement('a-plane');
                 cardBackBg.setAttribute('width', cardWidth);
                 cardBackBg.setAttribute('height', cardHeight);
@@ -179,18 +120,14 @@ AFRAME.registerComponent('memory-game', {
                 cardBackBg.setAttribute('position', '0 0 0');
                 cardBackBg.setAttribute('visible', 'false');
                 cardBackBg.setAttribute('class', 'card-back-bg');
-                
-                // Add all parts to the card
+
                 card.appendChild(cardFront);
                 card.appendChild(cardBackBg);
                 card.appendChild(cardBack);
-                
-                // Add to game board
+
                 gameBoard.appendChild(card);
-                
-                // Store reference to the card
                 this.cards.push(card);
-                
+
                 cardIndex++;
             }
         }
@@ -199,89 +136,61 @@ AFRAME.registerComponent('memory-game', {
     },
     
     flipCard: function(card) {
-        console.log("Tentando virar carta");
-        // Get card components
         const cardFront = card.querySelector('.card-front');
         const cardBackBg = card.querySelector('.card-back-bg');
-        const shape = card.querySelector('.shape');
-        
-        // Check if card can be flipped
-        if (!this.canFlip || 
-            this.flippedCards.includes(card) || 
-            shape.getAttribute('visible') === true) {
-            console.log("Carta não pode ser virada");
+        const cardImage = card.querySelector('.card-image');
+
+        if (!this.canFlip ||
+            this.flippedCards.includes(card) ||
+            cardImage.getAttribute('visible') === true) {
             return;
         }
-        
-        console.log("Virando carta");
-        // Flip the card
+
         cardFront.setAttribute('visible', false);
-        cardFront.classList.remove('clickable');  // Remover clickable quando virada
+        cardFront.classList.remove('clickable');
         cardBackBg.setAttribute('visible', true);
-        shape.setAttribute('visible', true);
-        
-        // Add to flipped cards
+        cardImage.setAttribute('visible', true);
+
         this.flippedCards.push(card);
-        
-        // Check for match if we have 2 cards flipped
+
         if (this.flippedCards.length === 2) {
             this.canFlip = false;
             setTimeout(() => this.checkMatch(), 1000);
         }
     },
-    
+
     checkMatch: function() {
         const card1 = this.flippedCards[0];
         const card2 = this.flippedCards[1];
-        
-        const color1 = card1.getAttribute('data-color');
-        const color2 = card2.getAttribute('data-color');
-        const shape1 = card1.getAttribute('data-shape');
-        const shape2 = card2.getAttribute('data-shape');
-        
-        if (color1 === color2 && shape1 === shape2) {
-            // Match found
+
+        const img1 = card1.getAttribute('data-image');
+        const img2 = card2.getAttribute('data-image');
+
+        if (img1 === img2) {
             this.pairsFound++;
-            
-            // Update score
             document.getElementById('score').textContent = `Pairs Found: ${this.pairsFound}`;
-            
-            // Display message
             const messageEl = document.getElementById('message');
             messageEl.textContent = 'Match found!';
             setTimeout(() => { messageEl.textContent = ''; }, 1500);
-            
-            // Remove cards from game logic (keep visible)
             this.flippedCards = [];
-            
-            // Check if game is complete
             if (this.pairsFound === this.totalPairs) {
                 this.gameComplete();
             }
         } else {
-            // No match
-            // Flip cards back
             this.flippedCards.forEach(card => {
                 const cardFront = card.querySelector('.card-front');
                 const cardBackBg = card.querySelector('.card-back-bg');
-                const shape = card.querySelector('.shape');
-                
+                const cardImage = card.querySelector('.card-image');
                 cardFront.setAttribute('visible', true);
-                cardFront.classList.add('clickable');  // Restaurar clickable
+                cardFront.classList.add('clickable');
                 cardBackBg.setAttribute('visible', false);
-                shape.setAttribute('visible', false);
+                cardImage.setAttribute('visible', false);
             });
-            
-            // Display message
             const messageEl = document.getElementById('message');
             messageEl.textContent = 'No match!';
             setTimeout(() => { messageEl.textContent = ''; }, 1500);
-            
-            // Reset flipped cards
             this.flippedCards = [];
         }
-        
-        // Allow flipping again
         this.canFlip = true;
     },
     
